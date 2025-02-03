@@ -1,0 +1,73 @@
+# Initial probabilities
+p0=0.5;
+p1 = 1-p0;
+
+p00=0.5;
+p01 = 1-p00;
+p11 = 0.5;
+p10 = 1-p11;
+
+# Transition matrix
+P = [p00 p01;p10 p11];
+
+# Parameters
+N=15;
+i=8;
+
+####################################################################################### Analytical  #######################################################################################
+
+if i==0 || i>N
+    first=0;
+    second=0;
+elseif i==N
+    second = p11^(N-1);
+    first = 0;
+else
+    first = sum(arrayfun(@(j) p11^(i-j)*(p10^j)*nchoosek(i-1,j-1)*p01^(j-1)*p00^(N-i-j)*nchoosek(N-i-1,j-1),1:min(i,N-i)));
+    second = sum(arrayfun(@(j) p11^(i-1-j)*(p10^j)*nchoosek(i-1,j)*p01^j*p00^(N-i-j)*nchoosek(N-i-1,j-1),1:min(i-1,N-i)));
+end
+p_s1 = p1*(first+second);
+
+if i==0
+    second = p00^(N-1);
+    first = 0;
+elseif i == N || i>N
+    first = 0;
+    second = 0;
+else
+    first = sum(arrayfun(@(j) p11^(i-j)*(p10^(j-1))*nchoosek(i-1,j-1)*(p01^j)*p00^(N-i-j)*nchoosek(N-i-1,j-1),1:min(i,N-i)));
+    second = sum(arrayfun(@(j) p11^(i-j)*(p10^j)*nchoosek(i-1,j-1)*(p01^j)*p00^(N-1-i-j)*nchoosek(N-i-1,j),1:min(i,N-i-1)));
+end
+
+p_s0 = p0*(first+second);
+
+ana_res = p_s1+p_s0;
+fprintf('Analytical Result: %d\n', ana_res);
+
+####################################################################################### Simulation #######################################################################################
+
+P_cum = [P(:,1),[1;1]];
+
+# Simulation parameters
+count=0;
+num_simulations = 1e7;
+
+%for j=1:num_simulations
+parfor (j=1:num_simulations,4)
+    y_obs = zeros(1,N);
+    if rand>p1
+        y_obs(1)=1;
+    else
+        y_obs(1)=2;
+    end
+    for t=1:N-1
+        r = rand;
+        y_obs(t+1) = sum(r>P_cum(y_obs(t),:))+1;
+    end
+    if sum(y_obs(1:end))==((N-i) + i*2)
+        count=count+1;
+    end
+end
+
+sim_res = count/num_simulations
+fprintf('Simulation Result: %d\n', sim_res);
