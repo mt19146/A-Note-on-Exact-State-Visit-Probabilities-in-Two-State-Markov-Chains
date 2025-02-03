@@ -1,0 +1,82 @@
+import numpy as np
+from math import comb
+
+# Initial probabilities
+p0 = 0.5
+p1 = 1 - p0
+
+p00 = 0.5
+p01 = 1 - p00
+p11 = 0.5
+p10 = 1 - p11
+
+# Transition matrix
+P = np.array([[p00, p01], [p10, p11]])
+
+# Parameters
+N = 15
+i = 8
+
+####################################################################################### Analytical  #######################################################################################
+
+# Calculate first and second terms for p_s1
+if i == 0 or i > N:
+    first = 0
+    second = 0
+elif i == N:
+    second = p11 ** (N - 1)
+    first = 0
+else:
+    first = sum(p11 ** (i - j) * (p10**j) * comb(i - 1, j - 1) * p01 ** (j - 1) * p00 ** (N - i - j) * comb(N - i - 1, j - 1) for j in range(1, min(i, N - i) + 1))
+    second = sum(p11 ** (i - 1 - j) * (p10**j) * comb(i - 1, j) * p01**j * p00 ** (N - i - j) * comb(N - i - 1, j - 1) for j in range(1, min(i - 1, N - i) + 1))
+
+p_s1 = p1 * (first + second)
+
+# Calculate first and second terms for p_s0
+if i == 0:
+    second = p00 ** (N - 1)
+    first = 0
+elif i == N or i > N:
+    first = 0
+    second = 0
+else:
+    first = sum(p11 ** (i - j) * (p10 ** (j - 1)) * comb(i - 1, j - 1) * (p01**j) * p00 ** (N - i - j) * comb(N - i - 1, j - 1) for j in range(1, min(i, N - i) + 1))
+    second = sum(p11 ** (i - j) * (p10**j) * comb(i - 1, j - 1) * (p01**j) * p00 ** (N - 1 - i - j) * comb(N - i - 1, j) for j in range(1, min(i, N - i - 1) + 1))
+
+p_s0 = p0 * (first + second)
+
+# Final result
+ana_res = p_s1 + p_s0
+print(f"Analytical Result: {ana_res}")
+
+
+####################################################################################### Simulation #######################################################################################
+P_cum = np.hstack((P[:, 0:1], np.ones((2, 1))))
+
+# Simulation parameters
+num_simulations = int(1e5)
+count = 0
+
+for j in range(num_simulations):
+    y_obs = np.zeros(N, dtype=int)
+    
+    # Initial state based on p1
+    if np.random.rand() > p1:
+        y_obs[0] = 1
+    else:
+        y_obs[0] = 2
+    
+    # Generate subsequent states
+    for t in range(N - 1):
+        r = np.random.rand()
+        y_obs[t + 1] = np.sum(r > P_cum[y_obs[t] - 1, :]) + 1
+
+    # Check condition
+    if np.sum(y_obs) == ((N - i) + i * 2):
+        count += 1
+
+# Count successful trials
+count = sum(results)
+
+sim_res = count / num_simulations
+print(f"Simulation Result: {sim_res}")
